@@ -7,14 +7,14 @@ from tqdm import tqdm
 # Desactivar el uso de MPS
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-# Cargar modelo de parafraseo más rápido
-paraphrase_pipeline = pipeline("text2text-generation", model="t5-small")
+# Cargar modelo de parafraseo con BART
+paraphrase_pipeline = pipeline("text2text-generation", model="facebook/bart-large-cnn")
 
 def parafrasear_texto(texto):
     try:
         if not texto or not isinstance(texto, str):
             return ""
-        resultado = paraphrase_pipeline(f"{texto}", max_length=200, min_length=30, do_sample=False)
+        resultado = paraphrase_pipeline(texto, max_length=200, min_length=30, do_sample=False)
         return resultado[0]['generated_text']
     except Exception as e:
         print(f"Error al parafrasear: {e}")
@@ -32,7 +32,7 @@ def procesar_fila(row):
         print(f"Error al procesar la fila: {e}")
     return None
 
-def extraer_y_parafrasear(input_excel, output_file, chunksize=10):
+def extraer_y_parafrasear(input_excel, output_file, chunksize=20):
     try:
         hojas = pd.ExcelFile(input_excel)
     except Exception as e:
@@ -50,7 +50,7 @@ def extraer_y_parafrasear(input_excel, output_file, chunksize=10):
                 for start in tqdm(range(0, total_rows, chunksize), desc=f"Procesando {nombre_hoja}", unit="chunk"):
                     chunk = df.iloc[start:start + chunksize]
                     
-                    with ThreadPoolExecutor(max_workers=2) as executor:
+                    with ThreadPoolExecutor(max_workers=4) as executor:
                         resultados = list(executor.map(procesar_fila, [row for _, row in chunk.iterrows()]))
                     
                     for resultado in resultados:
